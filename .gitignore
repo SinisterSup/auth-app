@@ -1,0 +1,25 @@
+# Environment files
+.env
+.env.local
+.env.*
+!.env.example
+
+
+/bin/
+
+.vscode/*
+!.vscode/settings.json
+.history/
+
+data/
+mongodb/
+
+main
+auth-service
+
+*.log
+logs/
+tmp/
+temp/
+dist/
+build/
