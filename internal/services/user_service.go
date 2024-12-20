@@ -73,10 +73,24 @@ func (s *AuthService) SignIn(input models.SignInInput) (*models.TokenResponse, e
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Println(accessToken)
+	refreshToken, err := utils.GenerateRefreshToken(user.ID.Hex(), user.Email)
+    if err != nil {
+        return nil, err
+    }
+
+	// In order to story refresh token in database
+	_, err = s.collection.UpdateOne(
+        ctx,
+        bson.M{"_id": user.ID},
+        bson.M{"$set": bson.M{"refresh_token": refreshToken}},
+    )
+    if err != nil {
+        return nil, errors.New("failed to store refresh token")
+    }
 
 	return &models.TokenResponse{
 		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}, nil
 }
 
@@ -94,6 +108,7 @@ func (s *AuthService) RevokeToken(userId, token string) error {
 		RevokedAt: time.Now(),
 	}
 
+	// To update revoked token in databse
 	result, err := s.collection.UpdateOne(
 		ctx,
 		bson.M{"_id": objectId},
@@ -120,4 +135,49 @@ func (s *AuthService) RevokeToken(userId, token string) error {
     }
 
 	return nil
+}
+
+
+func (s *AuthService) RefreshToken(refreshToken string) (*models.TokenResponse, error) {
+    claims, err := utils.ValidateRefreshToken(refreshToken)
+    if err != nil {
+        return nil, err
+    }
+
+    ctx := context.Background()
+
+    // Check if refresh token exists in DB
+    var user models.User
+    err = s.collection.FindOne(ctx, bson.M{
+        "_id": claims.UserId,
+        "refresh_token": refreshToken,
+    }).Decode(&user)
+
+    if err != nil {
+        return nil, errors.New("invalid refresh token")
+    }
+
+    newAccessToken, err := utils.GenerateToken(user.ID.Hex(), user.Email)
+    if err != nil {
+        return nil, err
+    }
+    newRefreshToken, err := utils.GenerateRefreshToken(user.ID.Hex(), user.Email)
+    if err != nil {
+        return nil, err
+    }
+
+    // Updating the refresh token in database
+    _, err = s.collection.UpdateOne(
+        ctx,
+        bson.M{"_id": user.ID},
+        bson.M{"$set": bson.M{"refresh_token": newRefreshToken}},
+    )
+    if err != nil {
+        return nil, errors.New("failed to update refresh token")
+    }
+
+    return &models.TokenResponse{
+        AccessToken:  newAccessToken,
+        RefreshToken: newRefreshToken,
+    }, nil
 }

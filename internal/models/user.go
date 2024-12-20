@@ -33,5 +33,9 @@ type SignInInput struct {
 
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
-	// RefreshToken string `json:"refresh_token"`  // refresh token func to be added
+	RefreshToken string `json:"refresh_token"`
+}
+
+type RefreshTokenInput struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }

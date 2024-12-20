@@ -96,6 +96,24 @@ func handleRevokeToken(authService *services.AuthService) gin.HandlerFunc {
 	}
 }
 
+func handleRefreshToken(authService *services.AuthService) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        var input models.RefreshTokenInput
+        if err := c.ShouldBindJSON(&input); err != nil {
+            c.JSON(400, gin.H{"error": err.Error()})
+            return
+        }
+
+        tokens, err := authService.RefreshToken(input.RefreshToken)
+        if err != nil {
+            c.JSON(401, gin.H{"error": err.Error()})
+            return
+        }
+
+        c.JSON(200, tokens)
+    }
+}
+
 func handleProfile() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId, _ := c.Get("userId")

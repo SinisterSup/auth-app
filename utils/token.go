@@ -50,8 +50,9 @@ func ValidateToken(tokenString string) (*JWTClaim, error) {
 	if claims.ExpiresAt.Time.Before(time.Now()) {
 		return nil, errors.New("token expired")
 	}
+	
 	revoked, err := isTokenRevoked(claims.UserId, tokenString)
-	// fmt.Println("token revoked? -", revoked)
+	// log.Println("token revoked? -", revoked)
 	if err != nil {
 		return nil, errors.New("error checking token status")
 	}
@@ -124,4 +125,38 @@ func isTokenRevoked(userId string, tokenString string) (bool, error) {
 
 	log.Printf("the collections.docCount is ? - %v", count)
 	return count > 0, nil
+}
+
+func GenerateRefreshToken(userId, email string) (string, error) {
+    claims := JWTClaim{
+        UserId: userId,
+        Email:  email,
+        RegisteredClaims: jwt.RegisteredClaims{
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(120 * time.Hour)), // 5 days
+            IssuedAt:  jwt.NewNumericDate(time.Now()),
+        },
+    }
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+    return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+}
+
+func ValidateRefreshToken(tokenString string) (*JWTClaim, error) {
+    token, err := jwt.ParseWithClaims(tokenString, &JWTClaim{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
+
+    if err != nil {
+        return nil, err
+    }
+
+    claims, ok := token.Claims.(*JWTClaim)
+    if !ok {
+        return nil, errors.New("couldn't parse claims")
+    }
+
+    if claims.ExpiresAt.Time.Before(time.Now()) {
+        return nil, errors.New("refresh token expired")
+    }
+
+    return claims, nil
 }

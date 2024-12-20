@@ -14,7 +14,7 @@ func SetupAuthRoutes(router *gin.Engine) {
 	{
 		auth.POST("/signup", handleSignUp(authService))
 		auth.POST("/signin", handleSignIn(authService))
-		// auth.POST("/refresh", handleRefreshToken(authService))  // yet to be figured out
+		auth.POST("/refresh", handleRefreshToken(authService))
 		auth.POST("/revoke", verify.AuthVerify(), handleRevokeToken(authService))
 	}
 
