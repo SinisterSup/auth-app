@@ -2,6 +2,8 @@ package routes
 
 import (
 	// "github.com/SinisterSup/auth-service/internal/verify"
+	"log"
+
 	"github.com/SinisterSup/auth-service/internal/models"
 	"github.com/SinisterSup/auth-service/internal/services"
 
@@ -46,14 +48,51 @@ func handleSignIn(authService *services.AuthService) gin.HandlerFunc {
 
 func handleRevokeToken(authService *services.AuthService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		userId, _ := ctx.Get("userId")
-		err := authService.RevokeToken(userId.(string))
-		if err != nil {
-			ctx.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
+		log.Println("Starting token revocation")
 
-		ctx.JSON(200, gin.H{"message": "token has been revoked"})
+		keys := ctx.Keys
+		log.Printf("Context keys available are: %v", keys)
+
+		userId, userExists := ctx.Get("userId")
+		log.Printf("UserID exists: %v, Value: %v", userExists, userId)
+
+		if !userExists {
+            ctx.JSON(401, gin.H{"error": "user ID not found in context"})
+            return
+        }
+		userIdStr, ok := userId.(string)
+        if !ok {
+            ctx.JSON(500, gin.H{"error": "invalid user ID format"})
+            return
+        }
+
+		token, tokenExists := ctx.Get("currentToken")
+		log.Printf("Token exists: %v, Value length: %v", tokenExists, 
+			func() interface{} {
+				if tokenStr, ok := token.(string); ok {
+					return len(tokenStr)
+				}
+				return "not a string"
+			}())
+		if !tokenExists {
+            ctx.JSON(401, gin.H{"error": "token not found in context"})
+            return
+        }
+		tokenStr, ok := token.(string)
+        if !ok {
+            ctx.JSON(500, gin.H{"error": "invalid token format"})
+            return
+        }
+
+		err := authService.RevokeToken(userIdStr, tokenStr)
+		if err != nil {
+			log.Printf("Token revocation failed: %v", err)
+            ctx.JSON(500, gin.H{"error": "failed to revoke token: " + err.Error()})
+            return
+        }
+
+		log.Println("Token revocation successful")
+		ctx.JSON(200, gin.H{"message": "token revoked successfully"})
 	}
 }
 

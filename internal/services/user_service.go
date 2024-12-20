@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"errors"
-	// "fmt"
+	"fmt"
 	"time"
 
 	"github.com/SinisterSup/auth-service/db"
@@ -80,16 +80,44 @@ func (s *AuthService) SignIn(input models.SignInInput) (*models.TokenResponse, e
 	}, nil
 }
 
-func (s *AuthService) RevokeToken(userId string) error {
+func (s *AuthService) RevokeToken(userId, token string) error {
 	objectId, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		return err
 	}
 
-	_, err = s.collection.UpdateOne(
-		context.Background(),
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	revokedToken := models.RevokedToken{
+		Token: token, 
+		RevokedAt: time.Now(),
+	}
+
+	result, err := s.collection.UpdateOne(
+		ctx,
 		bson.M{"_id": objectId},
-		bson.M{"$set": bson.M{"refresh_token": ""}},
+		bson.M{
+			"$set": bson.M{"refresh_token": ""},
+			"$addToSet":bson.M{
+				"revoked_tokens": revokedToken,
+			}, 
+		},
 	)
-	return err
+
+	if err != nil {
+		return errors.New("failed to revoke token")
+	}
+    if result.ModifiedCount == 0 {
+        count, err := s.collection.CountDocuments(ctx, bson.M{"_id": objectId})
+        if err != nil {
+            return fmt.Errorf("error checking user existence: %v", err)
+        }
+        if count == 0 {
+            return errors.New("user not found")
+        }
+        return errors.New("token already revoked")
+    }
+
+	return nil
 }
