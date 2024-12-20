@@ -2,8 +2,6 @@ package routes
 
 import (
 	// "github.com/SinisterSup/auth-service/internal/verify"
-	"log"
-
 	"github.com/SinisterSup/auth-service/internal/models"
 	"github.com/SinisterSup/auth-service/internal/services"
 
@@ -48,14 +46,7 @@ func handleSignIn(authService *services.AuthService) gin.HandlerFunc {
 
 func handleRevokeToken(authService *services.AuthService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		log.Println("Starting token revocation")
-
-		keys := ctx.Keys
-		log.Printf("Context keys available are: %v", keys)
-
 		userId, userExists := ctx.Get("userId")
-		log.Printf("UserID exists: %v, Value: %v", userExists, userId)
-
 		if !userExists {
             ctx.JSON(401, gin.H{"error": "user ID not found in context"})
             return
@@ -67,13 +58,6 @@ func handleRevokeToken(authService *services.AuthService) gin.HandlerFunc {
         }
 
 		token, tokenExists := ctx.Get("currentToken")
-		log.Printf("Token exists: %v, Value length: %v", tokenExists, 
-			func() interface{} {
-				if tokenStr, ok := token.(string); ok {
-					return len(tokenStr)
-				}
-				return "not a string"
-			}())
 		if !tokenExists {
             ctx.JSON(401, gin.H{"error": "token not found in context"})
             return
@@ -86,12 +70,12 @@ func handleRevokeToken(authService *services.AuthService) gin.HandlerFunc {
 
 		err := authService.RevokeToken(userIdStr, tokenStr)
 		if err != nil {
-			log.Printf("Token revocation failed: %v", err)
+			// log.Printf("Token revocation failed: %v", err)
             ctx.JSON(500, gin.H{"error": "failed to revoke token: " + err.Error()})
             return
         }
 
-		log.Println("Token revocation successful")
+		// log.Println("Token revocation successful")
 		ctx.JSON(200, gin.H{"message": "token revoked successfully"})
 	}
 }

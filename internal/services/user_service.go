@@ -52,7 +52,6 @@ func (s *AuthService) SignUp(input models.SignUpInput) (*models.User, error) {
 	}
 
 	user.ID = result.InsertedID.(primitive.ObjectID)
-	// fmt.Println(user)
 	return user, nil
 }
 

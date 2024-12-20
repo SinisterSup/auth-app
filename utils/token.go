@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -50,7 +49,7 @@ func ValidateToken(tokenString string) (*JWTClaim, error) {
 	if claims.ExpiresAt.Time.Before(time.Now()) {
 		return nil, errors.New("token expired")
 	}
-	
+
 	revoked, err := isTokenRevoked(claims.UserId, tokenString)
 	// log.Println("token revoked? -", revoked)
 	if err != nil {
@@ -64,12 +63,10 @@ func ValidateToken(tokenString string) (*JWTClaim, error) {
 }
 
 func isTokenRevoked(userId string, tokenString string) (bool, error) {
-	log.Println("starting validating if token has been revoked")
 	objectId, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		return true, err
 	}
-	log.Println("has no error while finding objectID")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -77,15 +74,12 @@ func isTokenRevoked(userId string, tokenString string) (bool, error) {
 	collection := db.DB.Collection("users")
 
     userCount, err := collection.CountDocuments(ctx, bson.M{"_id": objectId})
-    log.Println("checking collection.countdocs")
 	if err != nil {
         return false, err
     }
-	log.Println("no error while counting user docs")
     if userCount == 0 {
         return false, errors.New("user not found")
     }
-	log.Println("no error while counting users")
 
     filter := bson.M{
         "_id": objectId,
@@ -123,7 +117,6 @@ func isTokenRevoked(userId string, tokenString string) (bool, error) {
 	// 	return false, nil
 	// }
 
-	log.Printf("the collections.docCount is ? - %v", count)
 	return count > 0, nil
 }
 
