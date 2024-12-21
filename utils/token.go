@@ -33,39 +33,74 @@ func GenerateToken(userId, email string) (string, error) {
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 }
 
+// func ValidateToken(tokenString string) (*JWTClaim, error) {
+// 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaim{}, func(token *jwt.Token) (interface{}, error) {
+// 		return []byte(os.Getenv("JWT_SECRET")), nil
+// 	})
+
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	claims, ok := token.Claims.(*JWTClaim)
+// 	if !ok {
+// 		return nil, errors.New("couldn't parse JWTclaims")
+// 	}
+// 	if claims.ExpiresAt.Time.Before(time.Now()) {
+// 		return nil, errors.New("token expired")
+// 	}
+
+// 	revoked, err := isTokenRevoked(claims.UserId, tokenString)
+// 	// log.Println("token revoked? -", revoked)
+// 	if err != nil {
+// 		return nil, errors.New("error checking token status")
+// 	}
+// 	if revoked {
+// 		return nil, errors.New("token has been revoked")
+// 	}
+
+// 	return claims, nil
+// }
+
 func ValidateToken(tokenString string) (*JWTClaim, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaim{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
+    return ValidateTokenWithOptions(tokenString, false)
+}
 
-	if err != nil {
-		return nil, err
-	}
+func ValidateTokenWithOptions(tokenString string, skipRevocationCheck bool) (*JWTClaim, error) {
+    token, err := jwt.ParseWithClaims(tokenString, &JWTClaim{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(os.Getenv("JWT_SECRET")), nil
+    })
 
-	claims, ok := token.Claims.(*JWTClaim)
-	if !ok {
-		return nil, errors.New("couldn't parse JWTclaims")
-	}
-	if claims.ExpiresAt.Time.Before(time.Now()) {
-		return nil, errors.New("token expired")
-	}
+    if err != nil {
+        return nil, err
+    }
 
-	revoked, err := isTokenRevoked(claims.UserId, tokenString)
-	// log.Println("token revoked? -", revoked)
-	if err != nil {
-		return nil, errors.New("error checking token status")
-	}
-	if revoked {
-		return nil, errors.New("token has been revoked")
-	}
+    claims, ok := token.Claims.(*JWTClaim)
+    if !ok {
+        return nil, errors.New("couldn't parse JWTclaims")
+    }
 
-	return claims, nil
+    if claims.ExpiresAt.Time.Before(time.Now()) {
+        return nil, errors.New("token expired")
+    }
+
+    if !skipRevocationCheck {
+        revoked, err := isTokenRevoked(claims.UserId, tokenString)
+        if err != nil {
+            return nil, errors.New("error checking token status")
+        }
+        if revoked {
+            return nil, errors.New("token has been revoked")
+        }
+    }
+
+    return claims, nil
 }
 
 func isTokenRevoked(userId string, tokenString string) (bool, error) {
 	objectId, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
-		return true, err
+		return true, fmt.Errorf("invalid user ID: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -75,7 +110,7 @@ func isTokenRevoked(userId string, tokenString string) (bool, error) {
 
     userCount, err := collection.CountDocuments(ctx, bson.M{"_id": objectId})
 	if err != nil {
-        return false, err
+        return false, fmt.Errorf("database error checking user: %v", err)
     }
     if userCount == 0 {
         return false, errors.New("user not found")
@@ -95,7 +130,7 @@ func isTokenRevoked(userId string, tokenString string) (bool, error) {
 		filter,
 	)
     if err != nil {
-        return false, fmt.Errorf("database error: %v", err)
+        return false, fmt.Errorf("database error checking revoked tokens: %v", err)
     }
 
 	// var user struct {
