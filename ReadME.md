@@ -54,8 +54,8 @@ curl -X POST http://localhost:8080/auth/signup -H "Content-Type: application/jso
 {
     "id": "user_id",
     "email": "test@example.com",
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
+    "created_at": "2025-01-01T00:00:01Z",
+    "updated_at": "2025-01-01T00:00:10Z"
 }
 ```
 
@@ -66,7 +66,7 @@ curl -X POST http://localhost:8080/auth/signin -H "Content-Type: application/jso
 #### Successful Signin Response
 ```json
 {
-    "access_token": "eyJhbGc...",
+    "access_token": "eyJKngGc...",
     "refresh_token": "eyKmvTo..."
 }
 ```
@@ -91,4 +91,11 @@ curl -X POST http://localhost:8080/auth/revoke -H "Authorization: Bearer $ACCESS
 Refresh expired token
 ```powershell
 curl -X POST http://localhost:8080/auth/refresh -H "X-Refresh-Token: $REFRESH_TOKEN"
+```
+
+## Testing
+Test coverage for core functionalities, Test scripts are written for token utilities (`token_test.go`), authentication services (`user_service_test.go`), and API handlers (`auth_handler_test.go`). Run the full test using:
+
+```bash
+go test ./... -v
 ```
